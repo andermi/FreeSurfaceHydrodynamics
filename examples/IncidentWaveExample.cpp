@@ -117,6 +117,8 @@ switch (SpectrumType) {
     break;
 }
 
+ std::cout << Inc << std::endl;
+
   double k = pow(2 * M_PI / T, 2) / 9.81;
   std::cout << Inc << std::endl;
 
