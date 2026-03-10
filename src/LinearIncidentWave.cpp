@@ -287,12 +287,18 @@ double LinearIncidentWave::eta(double x, double y, double t,
 {
   double eta = 0.0;
   double deta_dxx = 0.0;
+  if (deta_dx) *deta_dx = 0.0;
+  if (deta_dy) *deta_dy = 0.0;
+  if (u_east) *u_east = 0.0;
+  if (v_north) *v_north = 0.0;
+
+  // Eulerian along-wave contribution
+  double u_along = 0.0;
+
   for(int n = 0; n< NumWaveComponents;n++)
   {
     double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
 
-    // Eulerian along-wave contribution
-    double u_along = 0.0;
 
     for (int i = 0; i < m_A[n].size(); i++) {
       double k = m_k[n](i);
