@@ -101,7 +101,7 @@ switch (SpectrumType) {
     break;
   case WaveSpectrumType::PiersonMoskowitz :
     Inc.SetToPiersonMoskowitzSpectrum(2*A,beta);
-    T = Inc.m_Tp;
+    T = Inc.m_Tp.back();
     break;
   case WaveSpectrumType::Bretschneider :
       Inc.SetToBretschneiderSpectrum(2*A,T,beta);

@@ -100,7 +100,7 @@ switch (SpectrumType) {
     break;
   case WaveSpectrumType::PiersonMoskowitz :
     Inc.SetToPiersonMoskowitzSpectrum(2*A,beta);
-    T = Inc.m_Tp;
+    T = Inc.m_Tp.back(); //Get the most recent added wave period for plotting purposes
     break;
   case WaveSpectrumType::Bretschneider :
       Inc.SetToBretschneiderSpectrum(2*A,T,beta);
@@ -125,10 +125,10 @@ switch (SpectrumType) {
     std::vector<double> pts_Sw,pts_Sf;
     for(int i = 0;i< Inc.m_omega.size();i++)
     {
-      pts_w.push_back(Inc.m_omega(i));
-      pts_f.push_back(Inc.m_omega(i)/(2.0*M_PI));
-      pts_Sw.push_back(Inc.m_Spectrum(i));
-      pts_Sf.push_back(2.0*M_PI*Inc.m_Spectrum(i));
+      pts_w.push_back(Inc.m_omega.back()(i));
+      pts_f.push_back(Inc.m_omega.back()(i)/(2.0*M_PI));
+      pts_Sw.push_back(Inc.m_Spectrum.back()(i));
+      pts_Sf.push_back(2.0*M_PI*Inc.m_Spectrum.back()(i));
     }
 
 //double sum = std::accumulate(pts_eta.begin(), pts_eta.end(), 0.0);
