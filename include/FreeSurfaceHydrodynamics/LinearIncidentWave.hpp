@@ -74,9 +74,9 @@ public:
   std::vector<Eigen::VectorXd> m_omega;
   std::vector<Eigen::VectorXd> m_k;
   std::vector<Eigen::VectorXd> m_phases;
-  std::vector<double> m_beta{0.};
-  std::vector<double> m_Hs{1.};
-  std::vector<double> m_Tp{10.};
+  std::vector<double> m_beta;
+  std::vector<double> m_Hs;
+  std::vector<double> m_Tp;
 };
 
 #endif  // FREESURFACEHYDRODYNAMICS__LIB__LINEARINCIDENTWAVE_HPP_
