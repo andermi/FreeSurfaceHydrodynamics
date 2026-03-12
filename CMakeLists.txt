@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(FreeSurfaceHydrodynamics VERSION 1.4.1 LANGUAGES CXX)
+project(FreeSurfaceHydrodynamics VERSION 1.4.2 LANGUAGES CXX)
 
 configure_file(${PROJECT_SOURCE_DIR}/include/FreeSurfaceHydrodynamics/config.h.in
                ${PROJECT_BINARY_DIR}/include/FreeSurfaceHydrodynamics/config.h)
