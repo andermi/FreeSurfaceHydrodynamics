@@ -50,6 +50,7 @@ public:
   void SetToPiersonMoskowitzSpectrum(double Hs, double UnusedTp, double beta, int n_phases);
   void SetToBretschneiderSpectrum(double Hs, double Tp, double beta);
   void SetToBretschneiderSpectrum(double Hs, double Tp, double beta, int n_phases);
+  void SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta, int n_phases,int spreading_factor, int n_sectors);
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta);
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta, int n_phases);
   friend std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave);

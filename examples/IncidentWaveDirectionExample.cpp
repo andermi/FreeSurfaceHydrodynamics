@@ -103,11 +103,13 @@ switch (SpectrumType) {
   case WaveSpectrumType::PiersonMoskowitz :
     Inc.SetToPiersonMoskowitzSpectrum(2*A,beta);
     Inc.SetToPiersonMoskowitzSpectrum(2*A,beta-45*M_PI/180.0);
+
     T = Inc.m_Tp.back();
     break;
   case WaveSpectrumType::Bretschneider :
-      Inc.SetToBretschneiderSpectrum(2*A,T,beta);
-      Inc.SetToBretschneiderSpectrum(2*A,T,beta-45*M_PI/180.0);
+    //  Inc.SetToBretschneiderSpectrum(2*A,T,beta);
+    //  Inc.SetToBretschneiderSpectrum(2*A,T,beta-45*M_PI/180.0);
+    Inc.SetToBretschneiderSpectrumWithCos2Spreading(2*A,T,beta, 750, 10, 20);
     break;
   case WaveSpectrumType::Custom :
     std::vector<double> freq{ 0.029, 0.0341688345, 0.0390, 0.043932892, 0.0488, 0.0536951298, 0.0585, 0.0634555457, 0.0683, 0.0732257700, 0.0781, 0.0829861181, 0.0878, 0.0927488175, 0.0976, 0.102510986, 0.1074, 0.112273223, 0.1171, 0.122035460, 0.1269, 0.131797630, 0.1367, 0.141560329, 0.1464, 0.151320677, 0.1562, 0.161090902, 0.1660, 0.170851250, 0.1757, 0.180613949, 0.1855, 0.190376118, 0.1953, 0.200138288, 0.2050, 0.209900987, 0.2148, 0.219661335, 0.2246, 0.2294315, 0.2343, 0.239191908, 0.2441, 0.248954607, 0.2539, 0.258716776, 0.2636, 0.268479013, 0.2734, 0.278241250, 0.283, 0.288003420, 0.2929, 0.297766119, 0.3027, 0.307460319, 0.312, 0.317483218, 0.3222, 0.326489863, 0.3320, 0.340055272, 0.3515, 0.3655377, 0.3808, 0.395586045, 0.4101, 0.42375818, 0.4394, 0.457258768, 0.4687, 0.473450624, 0.4980, 0.562050220, 0.654, 0.7461795179};

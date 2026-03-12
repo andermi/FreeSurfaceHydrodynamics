@@ -74,6 +74,19 @@ void LinearIncidentWave::SetToBretschneiderSpectrum(double Hs, double Tp, double
   SetToBretschneiderSpectrum(Hs, Tp, beta, DEFAULT_N_PHASES);
 }
 
+void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta_0, int n_phases,int spreading_factor, int n_sectors)
+{
+double d_beta = 2.0*M_PI/n_sectors;
+for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal heading wave is of identically zero  (cos(pi/2) = 0)
+  {
+  double beta = beta_0-(n*d_beta-M_PI);
+  double D = std::pow(cos((beta-beta_0)/2),2*spreading_factor)*std::tgamma(1.0+spreading_factor)/(2*sqrt(M_PI)*std::tgamma(0.5+spreading_factor));
+  //std::cout << "n = "  << n << "  beta = " << beta*180/M_PI << "  beta-beta_0 = " << beta-beta_0 << "  D " << D << std::endl;
+  SetToBretschneiderSpectrum(Hs*sqrt(D), Tp, beta, n_phases); // Spectrum energy scales as the square of Hs, so sqrt(D) introduces a factor of D into the Spectrum
+  }
+}
+
+
 /// \brief Select Bretschneider Spectrum (set num of phases)
 void LinearIncidentWave::SetToBretschneiderSpectrum(
   double Hs, double Tp, double beta,
