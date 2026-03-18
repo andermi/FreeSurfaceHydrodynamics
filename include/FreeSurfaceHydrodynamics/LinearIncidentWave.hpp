@@ -48,8 +48,11 @@ public:
   void SetToPiersonMoskowitzSpectrum(double Hs, double beta, int n_phases);
   void SetToPiersonMoskowitzSpectrum(double Hs, double UnusedTp, double beta);
   void SetToPiersonMoskowitzSpectrum(double Hs, double UnusedTp, double beta, int n_phases);
+  void SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta, int n_phases,int spreading_factor, int n_sectors);
+  void SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta, int spreading_factor, int n_sectors);
   void SetToBretschneiderSpectrum(double Hs, double Tp, double beta);
   void SetToBretschneiderSpectrum(double Hs, double Tp, double beta, int n_phases);
+  void SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta, int spreading_factor, int n_sectors);
   void SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta, int n_phases,int spreading_factor, int n_sectors);
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta);
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta, int n_phases);
