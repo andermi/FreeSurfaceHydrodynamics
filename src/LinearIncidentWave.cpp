@@ -320,18 +320,22 @@ double LinearIncidentWave::eta(double x, double y, double t,
                                double *u_east, double *v_north) const
 {
   double eta = 0.0;
-  double deta_dxx = 0.0;
   if (deta_dx) *deta_dx = 0.0;
   if (deta_dy) *deta_dy = 0.0;
   if (u_east) *u_east = 0.0;
   if (v_north) *v_north = 0.0;
 
-  // Eulerian along-wave contribution
-  double u_along = 0.0;
-
   for(int n = 0; n< NumWaveComponents;n++)
   {
     double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
+
+    // Per-direction-component slope / along-wave velocity contributions.
+    // These must be reset for each directional component before projecting
+    // into global East/North. Accumulating them across `n` and then applying
+    // the current component heading mixes previous sectors into the wrong
+    // direction, which especially corrupts multi-sector directional seas.
+    double deta_dxx = 0.0;
+    double u_along = 0.0;
 
 
     for (int i = 0; i < m_A[n].size(); i++) {
