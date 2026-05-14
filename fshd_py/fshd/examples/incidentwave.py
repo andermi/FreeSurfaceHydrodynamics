@@ -50,11 +50,11 @@ def main():
                         help='(degrees) sets the incident wave phase angle')
     parser.add_argument('-b', type=float, default=180.0,
                         help='(degrees) sets the incident wave direction')
-    parser.add_argument('-f', type=int, default=0,
+    parser.add_argument('-s', type=int, default=0,
                         help='(degrees) sets wave spreading (converted to cos2 spreading factor)')
     parser.add_argument('-E', default=None,
                         help='specify json with S and f (spectrum and freq); defaults otherwise')
-    parser.add_argument('-s', type=int, default=0,
+    parser.add_argument('-r', type=int, default=0,
                         help='sets the random seed')
     parser.add_argument('-S', type=str, default='M',
                         choices=['M', 'P', 'B', 'C'],
@@ -63,6 +63,11 @@ def main():
                                  + ", 'P'iersonMoskowitz" \
                                  + ", 'B'retschneider" \
                                  + ", 'C'ustom")
+    parser.add_argument('-o', type=str, default=None,
+                        help='output netcdf filename with incident wave data. Skips plotting.')
+    parser.add_argument('-n', type=int, default=10,
+                        help='for output, number of wave periods to save')
+
     args = parser.parse_args()
 
     SpectrumType = _wave_spectrum_type[args.S]
@@ -70,7 +75,7 @@ def main():
     T = args.t
     phase = args.p * np.pi / 180.0
     beta = args.b * np.pi / 180.0
-    seed = args.s
+    seed = args.r
 
 
     Inc = LinearIncidentWave()
@@ -78,20 +83,20 @@ def main():
     if seed > 0:
         Inc.SetSeed(seed)
 
-    sf = spreading_factor_from_spotter_spread_deg(args.f)
+    sf = spreading_factor_from_spotter_spread_deg(args.s)
     default_sectors = 20
     if SpectrumType == WaveSpectrumType.MonoChromatic:
         Inc.SetToMonoChromatic(A, T, phase, beta)
     elif SpectrumType == WaveSpectrumType.PiersonMoskowitz:
         print("setting pierson moskowitz")
-        if args.f > 0:
+        if args.s > 0:
             Inc.SetToPiersonMoskowitzSpectrumWithCos2Spreading(2.*A, beta, sf, default_sectors)
         else:
             Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
         T = 2.0 * np.pi * np.sqrt(2. * A / 9.81) / 0.4019
     elif SpectrumType == WaveSpectrumType.Bretschneider:
         print("setting bretschneider")
-        if args.f > 0:
+        if args.s > 0:
             Inc.SetToBretschneiderSpectrumWithCos2Spreading(2.*A, T, beta, sf, default_sectors)
         else:
             Inc.SetToBretschneiderSpectrum(2.*A, T, beta)
@@ -166,6 +171,38 @@ def main():
     k = ((2. * np.pi / T)**2.) / 9.81
     # print(Inc)
 
+    if args.o is not None:
+        import xarray as xr
+        pts_t = []
+        pts_eta = []
+        pts_deta_dx = []
+        pts_deta_dy = []
+        pts_u_east = []
+        pts_v_north = []
+        for t in np.arange(0., args.n*T, 0.1):
+            pts_t.append(t)
+            eta, deta_dx, deta_dy, u_east, v_north = \
+                Inc.eta(0., 0., t, compute_deta=True, compute_uv=True)
+            pts_eta.append(eta)
+            pts_deta_dx.append(deta_dx)
+            pts_deta_dy.append(deta_dy)
+            pts_u_east.append(u_east)
+            pts_v_north.append(v_north)
+        ds = xr.Dataset(
+                data_vars={
+                    'eta': (['time'], pts_eta),
+                    'deta_dx': (['time'], pts_deta_dx),
+                    'deta_dy': (['time'], pts_deta_dy),
+                    'u_east': (['time'], pts_u_east),
+                    'v_north': (['time'], pts_v_north),
+                },
+                coords={
+                    'time': pts_t,
+                },
+            )
+        ds.to_netcdf(args.o)
+        import sys; sys.exit(0)
+
     # plot
     pts_t = []
     pts_eta = []
@@ -178,7 +215,6 @@ def main():
         eta = Inc.eta(x, y, t)
         pts_eta.append(eta)
         pts_eta_true.append(A * np.cos(k * xx - 2. * np.pi * t / T + phase))
-
 
     fig, ax = plt.subplots(1)
 
@@ -241,27 +277,44 @@ def main():
 
         fig, ax = plt.subplots(1)
 
-        color = 'tab:red'
-        ln1 = ax.plot(pts_x, pts_eta, 'r', label='eta (m)')
-        ax.set_ylabel('meters', color=color)
-        ax.tick_params(axis='y', labelcolor=color)
-        ax.set_xlabel('meters')
-
-        ln2 = ax.plot(pts_x, pts_eta_true, '--g', label='eta true (m)')
-
-        color = 'tab:blue'
-        ax2 = ax.twinx()
-        ln3 = ax2.plot(pts_x, pts_u_east, 'b', label='u (east) (m/s)')
-        ax2.set_ylabel('meters per sec', color=color)
+        ln1 = ax.plot(pts_u_east, pts_v_north, 'b', label='u/v cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('v_north', color=color)
         ax2.tick_params(axis='y', labelcolor=color)
 
-        ln4 = ax2.plot(pts_x, pts_v_north, 'g', label='v (north) (m/s)')
-
-        lns = ln1 + ln2 + ln3 + ln4
+        lns = ln1
         labs = [l.get_label() for l in lns]
         ax.legend(lns, labs, loc=1)
 
-        fig.suptitle(f'Incident Wave Elevation at {t = :.2f} (s)')
+        fig.suptitle(f'Incident Wave u/v cycles at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        ln1 = ax.plot(pts_u_east, pts_deta_dx, 'b', label='u/deta cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('deta', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        lns = ln1
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave u vs deta cycles at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        ln1 = ax.plot(pts_v_north, pts_deta_dy, 'b', label='v/deta cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('deta', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        lns = ln1
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave v vs deta cycles at {t = :.2f} (s)')
         fig.tight_layout()
 
     plt.show()
