@@ -8,6 +8,29 @@ import numpy as np
 from fshd import LinearIncidentWave, WaveSpectrumType
 
 
+def spreading_factor_from_spotter_spread_deg(spread_deg):
+    """Convert Spotter/SWIFT first-moment directional spread [deg] to cos^(2s) exponent."""
+    spread_deg = np.asarray(spread_deg, dtype=float)
+    scalar_input = np.ndim(spread_deg) == 0
+
+    max_spread_deg = np.degrees(np.sqrt(2.0))
+
+    if np.any(spread_deg < 0):
+        raise ValueError('spread_deg must be >= 0 (use 0 to disable directional spreading)')
+
+    if np.any(spread_deg[spread_deg > 0] > max_spread_deg):
+        raise ValueError(
+            f'spread_deg must be <= {max_spread_deg:.3f} deg for this mapping'
+        )
+
+    # 0 degrees means no directional spreading; return None for scalar.
+    if scalar_input and spread_deg.item() == 0.0:
+        return None
+
+    spread_rad = np.radians(spread_deg)
+    return int(np.ceil(2.0 / (spread_rad ** 2) - 1.0))
+
+
 _wave_spectrum_type = dict(
     M=WaveSpectrumType.MonoChromatic,
     P=WaveSpectrumType.PiersonMoskowitz,
@@ -27,6 +50,8 @@ def main():
                         help='(degrees) sets the incident wave phase angle')
     parser.add_argument('-b', type=float, default=180.0,
                         help='(degrees) sets the incident wave direction')
+    parser.add_argument('-f', type=int, default=0,
+                        help='(degrees) sets wave spreading (converted to cos2 spreading factor)')
     parser.add_argument('-E', default=None,
                         help='specify json with S and f (spectrum and freq); defaults otherwise')
     parser.add_argument('-s', type=int, default=0,
@@ -59,7 +84,12 @@ def main():
         Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
         T = Inc.m_Tp
     elif SpectrumType == WaveSpectrumType.Bretschneider:
-        Inc.SetToBretschneiderSpectrum(2.*A, T, beta)
+        if args.f > 0:
+            sf = spreading_factor_from_spotter_spread_deg(args.f)
+            default_sectors = 20
+            Inc.SetToBretschneiderSpectrumWithCos2Spreading(2.*A, T, beta, sf, default_sectors)
+        else:
+            Inc.SetToBretschneiderSpectrum(2.*A, T, beta)
     elif SpectrumType == WaveSpectrumType.Custom:
         # grav = 9.81
         # w0 = sqrt(0.21 * grav / (2. * A))
@@ -164,14 +194,19 @@ def main():
         pts_eta_true = []
         pts_deta_dx = []
         pts_deta_dy = []
+        pts_u_east = []
+        pts_v_north = []
         for x in np.arange(-1.5 * 2. * np.pi / k,
                            1.5 * 2. * np.pi / k,
                            2.0):
-            eta, deta_dx, deta_dy = Inc.eta(x, y, t, compute_deta=True)
+            eta, deta_dx, deta_dy, u_east, v_north = \
+                Inc.eta(x, y, t, compute_deta=True, compute_uv=True)
             pts_x.append(x)
             pts_eta.append(eta)
             pts_deta_dx.append(deta_dx)
             pts_deta_dy.append(deta_dy)
+            pts_u_east.append(u_east)
+            pts_v_north.append(v_north)
 
             xx = x * np.cos(beta) + y * np.sin(beta)
             pts_eta_true.append(A * np.cos(k * xx - 2. * np.pi * t / T + phase))
@@ -193,6 +228,31 @@ def main():
         ax2.tick_params(axis='y', labelcolor=color)
 
         lns = ln1 + ln2 + ln3
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave Elevation at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        color = 'tab:red'
+        ln1 = ax.plot(pts_x, pts_eta, 'r', label='eta (m)')
+        ax.set_ylabel('meters', color=color)
+        ax.tick_params(axis='y', labelcolor=color)
+        ax.set_xlabel('meters')
+
+        ln2 = ax.plot(pts_x, pts_eta_true, '--g', label='eta true (m)')
+
+        color = 'tab:blue'
+        ax2 = ax.twinx()
+        ln3 = ax2.plot(pts_x, pts_u_east, 'b', label='u (east) (m/s)')
+        ax2.set_ylabel('meters per sec', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        ln4 = ax2.plot(pts_x, pts_v_north, 'g', label='v (north) (m/s)')
+
+        lns = ln1 + ln2 + ln3 + ln4
         labs = [l.get_label() for l in lns]
         ax.legend(lns, labs, loc=1)
 

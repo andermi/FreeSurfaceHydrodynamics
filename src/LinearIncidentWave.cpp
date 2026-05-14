@@ -38,7 +38,7 @@ LinearIncidentWave::LinearIncidentWave(unsigned int seed) : m_grav(9.81), m_rho(
 }
 
 /// \brief Sets seed to specified value
-void LinearIncidentWave::SetSeed(unsigned int seed) 
+void LinearIncidentWave::SetSeed(unsigned int seed)
 {
   if(seed == 0)
     std::srand(time(0));
@@ -79,7 +79,7 @@ void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, 
   SetToBretschneiderSpectrumWithCos2Spreading(Hs, Tp, beta_0, DEFAULT_N_PHASES, spreading_factor, n_sectors);
 }
 
-void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta_0, int n_phases,int spreading_factor, int n_sectors)
+void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta_0, int n_phases, int spreading_factor, int n_sectors)
 {
 double d_beta = 2.0*M_PI/n_sectors;
 for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal heading wave is of identically zero  (cos(pi/2) = 0)
@@ -130,7 +130,7 @@ void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double H
   SetToPiersonMoskowitzSpectrumWithCos2Spreading(Hs, beta_0, DEFAULT_N_PHASES, spreading_factor, n_sectors);
 }
 
-void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta_0, int n_phases,int spreading_factor, int n_sectors)
+void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta_0, int n_phases, int spreading_factor, int n_sectors)
 {
 double d_beta = 2.0*M_PI/n_sectors;
 for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal heading wave is of identically zero  (cos(pi/2) = 0)
