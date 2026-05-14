@@ -59,7 +59,7 @@ PYBIND11_MODULE(fshd, m) {
              [](LinearIncidentWave& self,
                 double Hs, double beta,
                 int spreading_factor, int n_sectors, int n_phases) {
-                 return self.SetToBretschneiderSpectrumWithCos2Spreading(
+                 return self.SetToPiersonMoskowitzSpectrumWithCos2Spreading(
                      Hs, beta, n_phases, spreading_factor, n_sectors);
              },
              py::arg("Hs"), py::arg("beta"),
@@ -138,6 +138,7 @@ PYBIND11_MODULE(fshd, m) {
              })
 
         .def_readonly("m_Tp", &LinearIncidentWave::m_Tp)
+        .def_readonly("m_Hs", &LinearIncidentWave::m_Hs)
         .def_readonly("m_omega", &LinearIncidentWave::m_omega)
         .def_readonly("m_A", &LinearIncidentWave::m_A);
 

@@ -78,15 +78,20 @@ def main():
     if seed > 0:
         Inc.SetSeed(seed)
 
+    sf = spreading_factor_from_spotter_spread_deg(args.f)
+    default_sectors = 20
     if SpectrumType == WaveSpectrumType.MonoChromatic:
         Inc.SetToMonoChromatic(A, T, phase, beta)
     elif SpectrumType == WaveSpectrumType.PiersonMoskowitz:
-        Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
-        T = Inc.m_Tp
-    elif SpectrumType == WaveSpectrumType.Bretschneider:
+        print("setting pierson moskowitz")
         if args.f > 0:
-            sf = spreading_factor_from_spotter_spread_deg(args.f)
-            default_sectors = 20
+            Inc.SetToPiersonMoskowitzSpectrumWithCos2Spreading(2.*A, beta, sf, default_sectors)
+        else:
+            Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
+        T = 2.0 * np.pi * np.sqrt(2. * A / 9.81) / 0.4019
+    elif SpectrumType == WaveSpectrumType.Bretschneider:
+        print("setting bretschneider")
+        if args.f > 0:
             Inc.SetToBretschneiderSpectrumWithCos2Spreading(2.*A, T, beta, sf, default_sectors)
         else:
             Inc.SetToBretschneiderSpectrum(2.*A, T, beta)

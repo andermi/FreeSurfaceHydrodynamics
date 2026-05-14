@@ -141,14 +141,14 @@ for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal headin
   }
 }
 
-/// \brief Select PM-Spectrum (default num of phases)  
+/// \brief Select PM-Spectrum (default num of phases)
 /// [DEPRECATED - This version including the unused Tp specificatoin may be removed in the future]
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(double Hs, double UnusedTp, double beta)
 {
   SetToPiersonMoskowitzSpectrum(Hs, beta, DEFAULT_N_PHASES);
 }
 
-/// \brief Select PM-Spectrum (set num of phases) 
+/// \brief Select PM-Spectrum (set num of phases)
 /// [DEPRECATED - This version including the unused Tp specificatoin may be removed in the future]
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
  double Hs, double UnusedTp, double beta, int n_phases)
@@ -157,13 +157,13 @@ void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
  }
 
 
-/// \brief Select PM-Spectrum (default num of phases)  
+/// \brief Select PM-Spectrum (default num of phases)
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(double Hs, double beta)
 {
   SetToPiersonMoskowitzSpectrum(Hs, beta, DEFAULT_N_PHASES);
 }
 
-/// \brief Select PM-Spectrum (set num of phases) 
+/// \brief Select PM-Spectrum (set num of phases)
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
   double Hs, double beta, int n_phases)
 {
@@ -245,7 +245,7 @@ std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave
   std::cout << "# IncidentWave consists of " << IncWave.NumWaveComponents << " Components" << std::endl;
   for(int n = 0; n< IncWave.NumWaveComponents;n++)
   {
-  switch (IncWave.m_SpectrumType[IncWave.NumWaveComponents]) {
+  switch (IncWave.m_SpectrumType[n]) {
     case WaveSpectrumType::MonoChromatic:
       std::cout << "# IncidentWave Type = Mono-Chromatic" << std::endl;
       std::cout << "# Amplitude = " << IncWave.m_Hs[n] / 2 << std::endl;
