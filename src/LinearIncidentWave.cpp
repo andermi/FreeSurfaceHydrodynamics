@@ -245,7 +245,7 @@ std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave
   std::cout << "# IncidentWave consists of " << IncWave.NumWaveComponents << " Components" << std::endl;
   for(int n = 0; n< IncWave.NumWaveComponents;n++)
   {
-  switch (IncWave.m_SpectrumType[IncWave.NumWaveComponents]) {
+  switch (IncWave.m_SpectrumType[n]) {
     case WaveSpectrumType::MonoChromatic:
       std::cout << "# IncidentWave Type = Mono-Chromatic" << std::endl;
       std::cout << "# Amplitude = " << IncWave.m_Hs[n] / 2 << std::endl;
@@ -271,6 +271,7 @@ std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave
       std::cout << "# IncidentWave Type = Bretschneider" << std::endl;
       std::cout << "# Hs = " << IncWave.m_Hs[n] << std::endl;
       std::cout << "# Tp = " << IncWave.m_Tp[n] << std::endl;
+      std::cout << "# Beta = " << IncWave.m_beta[n] << std::endl;
       std::cout << "# Num Phases = " << IncWave.m_Spectrum[n].size() << std::endl;
       std::cout << "# Wave Freq = " << IncWave.m_omega[n].transpose() << std::endl;
       std::cout << "# Wave Numbers = " << IncWave.m_k[n].transpose() << std::endl;
@@ -288,36 +289,14 @@ std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave
       std::cout << "# Component Amplitudes = " << IncWave.m_A[n].transpose() << std::endl;
       break;
     }
+    std::cout << std::endl;
   }
   return out;  // return std::ostream so we can chain calls to operator<<
 }
 
-double LinearIncidentWave::eta(double x, double y, double t) const
-{
-  double eta = 0;
-  for(int n = 0; n< NumWaveComponents;n++)
-  {
-    double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
-
-    for (int i = 0; i < m_A[n].size(); i++) {
-      eta +=  m_A[n](i) * cos(m_k[n](i) * xx - m_omega[n](i) * t + m_phases[n](i));
-    }
-  }
-  return eta;
-
-// Eigen::VectorXd temp;
-// temp.array()  = (xx*m_k-t*m_omega+m_phases).array().sin();
-// return -m_A.dot(temp);  //With -03, these two approaches are equally fast/slow
-}
-
-double LinearIncidentWave::eta(double x, double y, double t, double *deta_dx, double *deta_dy) const
-{
-  return eta(x, y, t, deta_dx, deta_dy, nullptr, nullptr);
-}
-
 double LinearIncidentWave::eta(double x, double y, double t,
                                double *deta_dx, double *deta_dy,
-                               double *u_east, double *v_north) const
+                               double *u_east, double *v_north, int n) const
 {
   double eta = 0.0;
   double deta_dxx = 0.0;
@@ -329,55 +308,117 @@ double LinearIncidentWave::eta(double x, double y, double t,
   // Eulerian along-wave contribution
   double u_along = 0.0;
 
-  for(int n = 0; n< NumWaveComponents;n++)
-  {
-    double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
+  double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
 
 
-    for (int i = 0; i < m_A[n].size(); i++) {
-      double k = m_k[n](i);
-      double omega = m_omega[n](i);
-      double a = m_A[n](i);
-      double phase = m_phases[n](i);
+  for (int i = 0; i < m_A[n].size(); i++) {
+    double k = m_k[n](i);
+    double omega = m_omega[n](i);
+    double a = m_A[n](i);
+    double phase = m_phases[n](i);
 
-      double arg = k * xx - omega * t + phase;
-      double cosarg = cos(arg);
+    double arg = k * xx - omega * t + phase;
+    double cosarg = cos(arg);
+
+//std::cout << "x = " << x << "  " 
+ //         << "y = " << y << "  " 
+ //         << "t = " << t << "  " 
+ //         << "k = " << k << "  " 
+ //         << "omega = " << omega << "  " 
+ //         << "phase = " << phase << "  " 
+ //         << std::endl; 
+
+    // freesurface heave
+    eta += a * cosarg;
+
+    //water plane slope
+    if(deta_dx || deta_dy)  //Only compute this if needed
+    {
       double sinarg = sin(arg);
-
-      // freesurface heave
-      eta += a * cosarg;
-
-      // water plane slope
       deta_dxx -= k * a * sinarg;
-
-      // Eulerian along-wave surface velocity (assume deep water)
-      // can just use omega directly since deep water dispersion w^2 = gk
-      u_along += a * omega * cosarg;
     }
 
-    // water plane slope
-    if (deta_dx) *deta_dx += deta_dxx*cos(m_beta[n]);  // deta/dx
-    if (deta_dy) *deta_dy += deta_dxx*sin(m_beta[n]);  // deta/dy
-
-    // u/v Eulerian surface velocities
-    if (u_east) *u_east += u_along * cos(m_beta[n]);
-    if (v_north) *v_north += u_along * sin(m_beta[n]);
+    // Eulerian along-wave surface velocity (assume deep water)
+    // can just use omega directly since deep water dispersion w^2 = gk
+   u_along += a * omega * cosarg;
   }
+
+  // water plane slope
+  if (deta_dx) *deta_dx += deta_dxx*cos(m_beta[n]);  // deta/dx
+  if (deta_dy) *deta_dy += deta_dxx*sin(m_beta[n]);  // deta/dy
+
+  // u/v Eulerian surface velocities
+  if (u_east) *u_east += u_along * cos(m_beta[n]);
+  if (v_north) *v_north += u_along * sin(m_beta[n]);
   return eta;
+}
+
+double LinearIncidentWave::eta(double x, double y, double t, double *deta_dx, double *deta_dy, int n) const
+{
+  return eta(x, y, t, deta_dx, deta_dy, nullptr, nullptr, n);
+}
+
+double LinearIncidentWave::eta(double x, double y, double t, int n) const
+{
+  return eta(x, y, t, nullptr, nullptr, nullptr, nullptr,n);
+}
+
+
+double LinearIncidentWave::eta(double x, double y, double t,
+                               double *deta_dx, double *deta_dy,
+                               double *u_east, double *v_north) const
+{
+  double eta_sum = 0;
+  double *loc_deta_dx = deta_dx;  // Propogate Null Pointers if any
+  double *loc_deta_dy = deta_dy;
+  double *loc_u_east = u_east;
+  double *loc_v_north = v_north;
+  
+  for(int n = 0; n< NumWaveComponents;n++)
+    {
+    eta_sum += eta(x,y,t,loc_deta_dx,loc_deta_dy,loc_u_east,loc_v_north,n);
+    if (loc_deta_dx) *deta_dx += *loc_deta_dx;  
+    if (loc_deta_dy) *deta_dy += *loc_deta_dx;
+    if (loc_u_east) *u_east += *loc_u_east;
+    if (loc_v_north) *v_north = *loc_v_north;
+  }
+  return eta_sum;
+}
+
+double LinearIncidentWave::eta(double x, double y, double t, double *deta_dx, double *deta_dy) const
+{
+  return eta(x, y, t, deta_dx, deta_dy, nullptr, nullptr);
+}
+
+double LinearIncidentWave::eta(double x, double y, double t) const
+{
+  return eta(x, y, t, nullptr, nullptr, nullptr, nullptr);
+}
+
+
+
+
+double LinearIncidentWave::etadot(double x, double y, double t, int n) const
+{
+  double etadot = 0;
+  if((n<0) || (n > NumWaveComponents))  // Return zero if invalid wave-component number.
+    return etadot;
+
+  double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
+
+  for (int i = 0; i < m_A[n].size(); i++) {
+    etadot += m_omega[n](i) * m_A[n](i) * sin(m_k[n](i) * xx - m_omega[n](i) * t + m_phases[n](i));
+  }
+  return etadot;
 }
 
 double LinearIncidentWave::etadot(double x, double y, double t) const
 {
-  double etadot = 0;
+  double etadot_sum = 0;
   for(int n = 0; n< NumWaveComponents;n++)
-  {
-    double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
-
-    for (int i = 0; i < m_A[n].size(); i++) {
-      etadot += m_omega[n](i) * m_A[n](i) * sin(m_k[n](i) * xx - m_omega[n](i) * t + m_phases[n](i));
-    }
-  }
-  return etadot;
+    etadot_sum += etadot(x,y,t,n);
+  
+    return etadot_sum;
 }
 
 /// \brief Returns Version String

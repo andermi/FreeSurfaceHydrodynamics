@@ -30,6 +30,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+add_compile_options(-g)
+add_link_options(-g)
+
 #------------------------------------------------------------------------
 # Include cmake
 include(${PROJECT_SOURCE_DIR}/cmake/URL.conf.cmake)
@@ -72,7 +75,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1)
 
-option(BUILD_PYTHON_BINDINGS "build FreeSurfaceHydrodynamics (fshd) python module" ON)
+#option(BUILD_PYTHON_BINDINGS "build FreeSurfaceHydrodynamics (fshd) python module" ON)
+option(BUILD_PYTHON_BINDINGS "build FreeSurfaceHydrodynamics (fshd) python module" OFF)
 if(BUILD_PYTHON_BINDINGS)
   find_package(Python REQUIRED COMPONENTS Interpreter Development)
   find_package(pybind11 CONFIG)

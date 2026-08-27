@@ -34,10 +34,10 @@ void signal_callback_handler(int signum) {
 }
 
 int main(int argc, char **argv) {
-  {
-    std::string s = "pkill gnuplot_qt";
-    int ret = system(s.c_str());
-  }
+//  {
+//    std::string s = "pkill gnuplot_qt";
+//    int ret = system(s.c_str());
+//  }
   signal(SIGINT, signal_callback_handler);
 
   WaveSpectrumType SpectrumType = WaveSpectrumType::MonoChromatic;
@@ -47,8 +47,10 @@ int main(int argc, char **argv) {
   double beta = 180 * M_PI / 180.0;
   unsigned int seed = 0;
 
+  bool make_plots = true;
+
   int c;
-  while ((c = getopt(argc, argv, "ha:t:p:b:s:S:")) != -1) {
+  while ((c = getopt(argc, argv, "ha:t:p:b:s:S:q")) != -1) {
     switch (c) {
     case 'a':
       A = atof(optarg);
@@ -86,6 +88,9 @@ int main(int argc, char **argv) {
       std::cout << "  [-S char] Sets Spectrum, 'M' = MonoChromatic, 'P' = PiersonMoskwitz, 'B' = Bretschneider, 'C' = Custom" <<std::endl;
       return 0;
       break;
+      case 'q':
+        make_plots = false; 
+      break;
     }
   }
 
@@ -103,6 +108,8 @@ switch (SpectrumType) {
     T = Inc.m_Tp.back(); //Get the most recent added wave period for plotting purposes
     break;
   case WaveSpectrumType::Bretschneider :
+    std::cout << "Setting up Bretschneider" << std::endl;
+
       Inc.SetToBretschneiderSpectrum(2*A,T,beta);
 
     break;
@@ -117,10 +124,9 @@ switch (SpectrumType) {
     break;
 }
 
- std::cout << Inc << std::endl;
+// std::cout << Inc << std::endl;
 
   double k = pow(2 * M_PI / T, 2) / 9.81;
-  std::cout << Inc << std::endl;
 
   {
     std::vector<double> pts_w,pts_f;
@@ -133,10 +139,13 @@ switch (SpectrumType) {
       pts_Sf.push_back(2.0*M_PI*Inc.m_Spectrum.back()(i));
     }
 
+
+  if(make_plots)
+  {
 //double sum = std::accumulate(pts_eta.begin(), pts_eta.end(), 0.0);
 //double mean = sum / pts_eta.size();
 //double sq_sum = std::inner_product(pts_eta.begin(), pts_eta.end(), pts_eta.begin(), 0.0);
-double stddev_w = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
+  double stddev_w = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     for(int i = 1;i< Inc.m_omega.size();i++)
       stddev_w += (pts_w[i]-pts_w[i-1])*(pts_Sw[i]+pts_Sw[i-1])/2;
     stddev_w = sqrt(stddev_w);
@@ -149,7 +158,7 @@ double stddev_w = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
        << 4*stddev_w  << "'" << "\n";
     gp_w.send1d(boost::make_tuple(pts_w, pts_Sw));
 
-double stddev_f = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
+  double stddev_f = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     for(int i = 1;i< Inc.m_omega.size();i++)
       stddev_f += (pts_f[i]-pts_f[i-1])*(pts_Sf[i]+pts_Sf[i-1])/2;
     stddev_f = sqrt(stddev_f);
@@ -161,6 +170,7 @@ double stddev_f = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     gp_f << "plot '-' w l title 'S, 4*std_dev = "
        << 4*stddev_f  << "'" << "\n";
     gp_f.send1d(boost::make_tuple(pts_f, pts_Sf));
+    }
   }
 
   {
@@ -178,12 +188,13 @@ double stddev_f = 0; //std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     //for(int i = 0; i<pts_t.size();i++)
     //  std::cout <<  pts_t[i] << " " <<  pts_eta[i] << std::endl;
        
+if(make_plots)
+{
+  double sum = std::accumulate(pts_eta.begin(), pts_eta.end(), 0.0);
+  double mean = sum / pts_eta.size();
 
-double sum = std::accumulate(pts_eta.begin(), pts_eta.end(), 0.0);
-double mean = sum / pts_eta.size();
-
-double sq_sum = std::inner_product(pts_eta.begin(), pts_eta.end(), pts_eta.begin(), 0.0);
-double stdev = std::sqrt(sq_sum / pts_eta.size() - mean * mean);
+  double sq_sum = std::inner_product(pts_eta.begin(), pts_eta.end(), pts_eta.begin(), 0.0);
+  double stdev = std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     Gnuplot gp;
     gp << "set term qt title  'Incident Wave Elevation at Origin'\n";
     gp << "set grid\n";
@@ -195,6 +206,7 @@ double stdev = std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     << "\n";
     gp.send1d(boost::make_tuple(pts_t, pts_eta));
   //  gp.send1d(boost::make_tuple(pts_t, pts_eta_true));
+}
   }
 
   double dt = .05 * T;
@@ -218,6 +230,8 @@ double stdev = std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     }
     char time[10];
     snprintf(time, sizeof(time), "%.2f", t);
+    if(make_plots)
+    {
     Gnuplot gp;
     gp << "set term qt title  'Incident Wave Elevation at t = " << time
        << " s'\n";
@@ -230,9 +244,13 @@ double stdev = std::sqrt(sq_sum / pts_eta.size() - mean * mean);
     gp.send1d(boost::make_tuple(pts_x, pts_eta));
     gp.send1d(boost::make_tuple(pts_x, pts_eta_true));
     gp.send1d(boost::make_tuple(pts_x, pts_deta_dx));
+    }
   }
+  if(make_plots)
+  {
   std::cout << "Enter Ctrl-C to quit.  (Enter 'pkill gnuplot_qt' to clear "
                "plots if necessary)"
             << std::endl;
   while (1);
+  }
 }

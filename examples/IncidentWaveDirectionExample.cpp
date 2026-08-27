@@ -35,10 +35,10 @@ void signal_callback_handler(int signum) {
 }
 
 int main(int argc, char **argv) {
-  {
-    std::string s = "pkill gnuplot_qt";
-    int ret = system(s.c_str());
-  }
+//  {
+//    std::string s = "pkill gnuplot_qt";
+//    int ret = system(s.c_str());
+//  }
   signal(SIGINT, signal_callback_handler);
 
   WaveSpectrumType SpectrumType = WaveSpectrumType::MonoChromatic;
@@ -47,9 +47,12 @@ int main(int argc, char **argv) {
   double phase = 0 * M_PI / 180.0;
   double beta = 180 * M_PI / 180.0;
   unsigned int seed = 0;
+  unsigned int Num_Sectors = 10;
+
+  bool make_plots = true;
 
   int c;
-  while ((c = getopt(argc, argv, "ha:t:p:b:s:S:")) != -1) {
+  while ((c = getopt(argc, argv, "hqa:t:p:b:s:S:N:")) != -1) {
     switch (c) {
     case 'a':
       A = atof(optarg);
@@ -85,8 +88,16 @@ int main(int argc, char **argv) {
       std::cout << "  [-b 30.0] sets the incident wave direction to 30.0 degrees" <<std::endl;
       std::cout << "  [-s 30.0] sets the random seed to 42" <<std::endl;
       std::cout << "  [-S char] Sets Spectrum, 'M' = MonoChromatic, 'P' = PiersonMoskwitz, 'B' = Bretschneider, 'C' = Custom" <<std::endl;
+      std::cout << "  [-q] Disables Plots" << std::endl;
       return 0;
       break;
+    case 'q':
+      make_plots = false;
+      break;
+    case 'N':
+      Num_Sectors = atoi(optarg);
+      break;
+
     }
   }
 
@@ -107,9 +118,11 @@ switch (SpectrumType) {
     T = Inc.m_Tp.back();
     break;
   case WaveSpectrumType::Bretschneider :
+  std::cout << "Setting up Bretschneider" << std::endl;
     //  Inc.SetToBretschneiderSpectrum(2*A,T,beta);
     //  Inc.SetToBretschneiderSpectrum(2*A,T,beta-45*M_PI/180.0);
-    Inc.SetToBretschneiderSpectrumWithCos2Spreading(2*A,T,beta, 750, 10, 20);
+    //Inc.SetToBretschneiderSpectrumWithCos2Spreading(2*A,T,beta, 750, 10, 20);
+    Inc.SetToBretschneiderSpectrumWithCos2Spreading(2*A,T,beta, 750, 10, Num_Sectors);
     break;
   case WaveSpectrumType::Custom :
     std::vector<double> freq{ 0.029, 0.0341688345, 0.0390, 0.043932892, 0.0488, 0.0536951298, 0.0585, 0.0634555457, 0.0683, 0.0732257700, 0.0781, 0.0829861181, 0.0878, 0.0927488175, 0.0976, 0.102510986, 0.1074, 0.112273223, 0.1171, 0.122035460, 0.1269, 0.131797630, 0.1367, 0.141560329, 0.1464, 0.151320677, 0.1562, 0.161090902, 0.1660, 0.170851250, 0.1757, 0.180613949, 0.1855, 0.190376118, 0.1953, 0.200138288, 0.2050, 0.209900987, 0.2148, 0.219661335, 0.2246, 0.2294315, 0.2343, 0.239191908, 0.2441, 0.248954607, 0.2539, 0.258716776, 0.2636, 0.268479013, 0.2734, 0.278241250, 0.283, 0.288003420, 0.2929, 0.297766119, 0.3027, 0.307460319, 0.312, 0.317483218, 0.3222, 0.326489863, 0.3320, 0.340055272, 0.3515, 0.3655377, 0.3808, 0.395586045, 0.4101, 0.42375818, 0.4394, 0.457258768, 0.4687, 0.473450624, 0.4980, 0.562050220, 0.654, 0.7461795179};
@@ -120,7 +133,7 @@ switch (SpectrumType) {
 }
 
   double k = pow(2 * M_PI / T, 2) / 9.81;
-  std::cout << Inc << std::endl;
+//  std::cout << Inc << std::endl;
 
   double dt =  T/8;
   double y = 0;
@@ -143,13 +156,15 @@ switch (SpectrumType) {
      for (double y = -(n_wavelengths/2) * 2 * M_PI / k; y <= (n_wavelengths/2) * 2 * M_PI / k; y += (n_wavelengths/n_divisions)*2*M_PI/k) {
       double detadx,detady;
       double u_east,v_north;
-      double eta = Inc.eta(x,y,t,nullptr,&detady,&u_east,&v_north);
-      double eta_dot = Inc.etadot(x,y,t);
+      double eta = Inc.eta(x,y,t,&detadx,&detady,&u_east,&v_north);
+      double eta_dot = 0; //Inc.etadot(x,y,t);
       outputFile << x << " " << y << " " << eta << " " << 100*u_east << " " << 100*v_north << " " << eta_dot << std::endl;
      }
      outputFile << std::endl;
     }
     outputFile.close();
+    if(make_plots)
+    {
     Gnuplot gp;
     //gp << "set term qt title  'Incident Wave Elevation at t = " << time
     //   << " s'\n";
@@ -161,9 +176,13 @@ switch (SpectrumType) {
     gp << "set contour base\n";
     gp << gnuplot_cmd << std::endl;
     std::cout << "For interactive plot, use \""  << gnuplot_cmd << "\" in gnuplot from command line" << std::endl;
+    }
   }
+  if(make_plots)
+  {
   std::cout << "Enter Ctrl-C to quit.  (Enter 'pkill gnuplot_qt' to clear "
                "plots if necessary)"
             << std::endl;
   while (1);
+  }
 }

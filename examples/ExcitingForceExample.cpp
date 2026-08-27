@@ -38,10 +38,10 @@ void signal_callback_handler(int signum) {
 }
 
 int main(int argc, char **argv) {
-  {
-    std::string s = "pkill gnuplot_qt";
-    int ret = system(s.c_str());
-  }
+  //{
+  //  std::string s = "pkill gnuplot_qt";
+  //  int ret = system(s.c_str());
+ // }
   signal(SIGINT, signal_callback_handler);
 
 
@@ -50,9 +50,10 @@ int main(int argc, char **argv) {
   double Tp = 5.0;
   double phase = 40.0 * M_PI / 180;
   double beta = 180.0 * M_PI / 180;
+  bool make_plots = true;
 
   int c;
-  while ((c = getopt(argc, argv, ":a:t:p:b:h")) != -1) {
+  while ((c = getopt(argc, argv, ":a:t:p:b:hq")) != -1) {
     switch (c) {
     case 'a':
       A = atof(optarg);
@@ -76,6 +77,9 @@ int main(int argc, char **argv) {
       std::cout << "  [-b 30.0] sets the incident wave direction to 30.0 degrees" <<std::endl;
       return 0;
       break;
+    case 'q':
+      make_plots = false;
+      break;
     }
   }
 
@@ -89,8 +93,10 @@ int main(int argc, char **argv) {
 
   double tf = 3.0 * Tp;
   double omega = 2.0 * M_PI / Tp;
-  double dt = 0.015;
+  double dt = 0.05;
 
+  Inc->SetToMonoChromatic(A, Tp, phase, beta);
+  Inc->SetToMonoChromatic(A, Tp, phase + M_PI, beta);
   Inc->SetToMonoChromatic(A, Tp, phase, beta);
 
   BuoyA5.AssignIncidentWave(Inc);
@@ -134,37 +140,44 @@ int main(int argc, char **argv) {
               cos(omega * pts_t[k] + phase * cos(180 * M_PI / 180)) -
           Inc->m_A.back()[0] * Chi.imag() *
               sin(omega * pts_t[k] + phase * cos(180 * M_PI / 180)));
-      pts_eta.push_back(Inc->eta(0, 0, pts_t[k]));
+      //pts_eta.push_back(Inc->eta(0, 0, pts_t[k]));
+      pts_eta.push_back(0);
       Eigen::VectorXd ExtForce(6);
       ExtForce = BuoyA5.ExcitingForce();
       pts_F_TD.push_back(ExtForce(j));
     }
-    Gnuplot gp;
-    gp << "set term qt title  '" << modes[j] << " Exciting Forces'\n";
-    gp << "set grid\n";
-    gp << "set xlabel 'time (s)'\n";
-    if (j < 3) {
-      gp << "set ylabel 'F (N)'\n";
-    } else {
-      gp << "set  ylabel 'M (N-m)'\n";
+    if(make_plots)
+    {
+      Gnuplot gp;
+      gp << "set term qt title  '" << modes[j] << " Exciting Forces'\n";
+      gp << "set grid\n";
+      gp << "set xlabel 'time (s)'\n";
+      if (j < 3) {
+        gp << "set ylabel 'F (N)'\n";
+      } else {
+        gp << "set  ylabel 'M (N-m)'\n";
+      }
+      gp << "plot '-' w l title 'Time-Domain'"
+         << ",'-' w l title 'Freq-Domain'"
+         << ",'-' w l title 'eta(t)'\n";
+      gp.send1d(boost::make_tuple(pts_t, pts_F_TD));
+      gp.send1d(boost::make_tuple(pts_t, pts_F_FD));
+      gp.send1d(boost::make_tuple(pts_t, pts_eta));
+      gp << "set xlabel 'time (s)'\n";
+      if (j < 3) {
+        gp << "set ylabel 'F (N)'\n";
+      } else {
+        gp << "set  ylabel 'M (N-m)'\n";
+      }
+      gp << "replot\n";
     }
-    gp << "plot '-' w l title 'Time-Domain'"
-       << ",'-' w l title 'Freq-Domain'"
-       << ",'-' w l title 'eta(t)'\n";
-    gp.send1d(boost::make_tuple(pts_t, pts_F_TD));
-    gp.send1d(boost::make_tuple(pts_t, pts_F_FD));
-    gp.send1d(boost::make_tuple(pts_t, pts_eta));
-    gp << "set xlabel 'time (s)'\n";
-    if (j < 3) {
-      gp << "set ylabel 'F (N)'\n";
-    } else {
-      gp << "set  ylabel 'M (N-m)'\n";
-    }
-    gp << "replot\n";
   }
 
-  std::cout << "Enter Ctrl-C to quit.  (Enter 'pkill gnuplot_qt' to clear "
+  if(make_plots)
+  {
+    std::cout << "Enter Ctrl-C to quit.  (Enter 'pkill gnuplot_qt' to clear "
                "plots if necessary)"
             << std::endl;
-  while (1);
+    while (1);
+  }
 }

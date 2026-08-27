@@ -57,11 +57,20 @@ public:
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta);
   void SetToCustomSpectrum(std::vector<double> freq, std::vector<double> S, double beta, int n_phases);
   friend std::ostream & operator<<(std::ostream & out, const LinearIncidentWave & IncWave);
+  double eta(double x, double y, double t, int n) const;
   double eta(double x, double y, double t) const;
+
+  double eta(double x, double y, double t, double *deta_dx, double *deta_dy, int n) const;
   double eta(double x, double y, double t, double *deta_dx, double *deta_dy) const;
+
+  double eta(double x, double y, double t,
+             double *deta_dx, double *deta_dy,
+             double *u_east, double *v_north, int n) const;  // includes Eulerian surface velocities
   double eta(double x, double y, double t,
              double *deta_dx, double *deta_dy,
              double *u_east, double *v_north) const;  // includes Eulerian surface velocities
+
+             double etadot(double x, double y, double t, int n) const;
   double etadot(double x, double y, double t) const;
   std::string Version();
   int MajorVersionNumber();
