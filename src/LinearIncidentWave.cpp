@@ -38,7 +38,7 @@ LinearIncidentWave::LinearIncidentWave(unsigned int seed) : m_grav(9.81), m_rho(
 }
 
 /// \brief Sets seed to specified value
-void LinearIncidentWave::SetSeed(unsigned int seed) 
+void LinearIncidentWave::SetSeed(unsigned int seed)
 {
   if(seed == 0)
     std::srand(time(0));
@@ -79,7 +79,7 @@ void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, 
   SetToBretschneiderSpectrumWithCos2Spreading(Hs, Tp, beta_0, DEFAULT_N_PHASES, spreading_factor, n_sectors);
 }
 
-void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta_0, int n_phases,int spreading_factor, int n_sectors)
+void LinearIncidentWave::SetToBretschneiderSpectrumWithCos2Spreading(double Hs, double Tp, double beta_0, int n_phases, int spreading_factor, int n_sectors)
 {
 double d_beta = 2.0*M_PI/n_sectors;
 for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal heading wave is of identically zero  (cos(pi/2) = 0)
@@ -130,7 +130,7 @@ void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double H
   SetToPiersonMoskowitzSpectrumWithCos2Spreading(Hs, beta_0, DEFAULT_N_PHASES, spreading_factor, n_sectors);
 }
 
-void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta_0, int n_phases,int spreading_factor, int n_sectors)
+void LinearIncidentWave::SetToPiersonMoskowitzSpectrumWithCos2Spreading(double Hs, double beta_0, int n_phases, int spreading_factor, int n_sectors)
 {
 double d_beta = 2.0*M_PI/n_sectors;
 for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal heading wave is of identically zero  (cos(pi/2) = 0)
@@ -141,14 +141,14 @@ for(int n = 1; n < n_sectors; n++) // start with n = 1 b/c the reciprocal headin
   }
 }
 
-/// \brief Select PM-Spectrum (default num of phases)  
+/// \brief Select PM-Spectrum (default num of phases)
 /// [DEPRECATED - This version including the unused Tp specificatoin may be removed in the future]
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(double Hs, double UnusedTp, double beta)
 {
   SetToPiersonMoskowitzSpectrum(Hs, beta, DEFAULT_N_PHASES);
 }
 
-/// \brief Select PM-Spectrum (set num of phases) 
+/// \brief Select PM-Spectrum (set num of phases)
 /// [DEPRECATED - This version including the unused Tp specificatoin may be removed in the future]
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
  double Hs, double UnusedTp, double beta, int n_phases)
@@ -157,13 +157,13 @@ void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
  }
 
 
-/// \brief Select PM-Spectrum (default num of phases)  
+/// \brief Select PM-Spectrum (default num of phases)
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(double Hs, double beta)
 {
   SetToPiersonMoskowitzSpectrum(Hs, beta, DEFAULT_N_PHASES);
 }
 
-/// \brief Select PM-Spectrum (set num of phases) 
+/// \brief Select PM-Spectrum (set num of phases)
 void LinearIncidentWave::SetToPiersonMoskowitzSpectrum(
   double Hs, double beta, int n_phases)
 {
@@ -299,16 +299,20 @@ double LinearIncidentWave::eta(double x, double y, double t,
                                double *u_east, double *v_north, int n) const
 {
   double eta = 0.0;
-  double deta_dxx = 0.0;
   if (deta_dx) *deta_dx = 0.0;
   if (deta_dy) *deta_dy = 0.0;
   if (u_east) *u_east = 0.0;
   if (v_north) *v_north = 0.0;
 
-  // Eulerian along-wave contribution
-  double u_along = 0.0;
+    double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
 
-  double xx = x * cos(m_beta[n]) + y * sin(m_beta[n]);
+    // Per-direction-component slope / along-wave velocity contributions.
+    // These must be reset for each directional component before projecting
+    // into global East/North. Accumulating them across `n` and then applying
+    // the current component heading mixes previous sectors into the wrong
+    // direction, which especially corrupts multi-sector directional seas.
+    double deta_dxx = 0.0;
+    double u_along = 0.0;
 
 
   for (int i = 0; i < m_A[n].size(); i++) {
@@ -319,14 +323,6 @@ double LinearIncidentWave::eta(double x, double y, double t,
 
     double arg = k * xx - omega * t + phase;
     double cosarg = cos(arg);
-
-//std::cout << "x = " << x << "  " 
- //         << "y = " << y << "  " 
- //         << "t = " << t << "  " 
- //         << "k = " << k << "  " 
- //         << "omega = " << omega << "  " 
- //         << "phase = " << phase << "  " 
- //         << std::endl; 
 
     // freesurface heave
     eta += a * cosarg;
@@ -350,6 +346,7 @@ double LinearIncidentWave::eta(double x, double y, double t,
   // u/v Eulerian surface velocities
   if (u_east) *u_east += u_along * cos(m_beta[n]);
   if (v_north) *v_north += u_along * sin(m_beta[n]);
+
   return eta;
 }
 

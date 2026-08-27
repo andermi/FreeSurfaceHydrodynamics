@@ -8,6 +8,29 @@ import numpy as np
 from fshd import LinearIncidentWave, WaveSpectrumType
 
 
+def spreading_factor_from_spotter_spread_deg(spread_deg):
+    """Convert Spotter/SWIFT first-moment directional spread [deg] to cos^(2s) exponent."""
+    spread_deg = np.asarray(spread_deg, dtype=float)
+    scalar_input = np.ndim(spread_deg) == 0
+
+    max_spread_deg = np.degrees(np.sqrt(2.0))
+
+    if np.any(spread_deg < 0):
+        raise ValueError('spread_deg must be >= 0 (use 0 to disable directional spreading)')
+
+    if np.any(spread_deg[spread_deg > 0] > max_spread_deg):
+        raise ValueError(
+            f'spread_deg must be <= {max_spread_deg:.3f} deg for this mapping'
+        )
+
+    # 0 degrees means no directional spreading; return None for scalar.
+    if scalar_input and spread_deg.item() == 0.0:
+        return None
+
+    spread_rad = np.radians(spread_deg)
+    return int(np.ceil(2.0 / (spread_rad ** 2) - 1.0))
+
+
 _wave_spectrum_type = dict(
     M=WaveSpectrumType.MonoChromatic,
     P=WaveSpectrumType.PiersonMoskowitz,
@@ -27,9 +50,11 @@ def main():
                         help='(degrees) sets the incident wave phase angle')
     parser.add_argument('-b', type=float, default=180.0,
                         help='(degrees) sets the incident wave direction')
+    parser.add_argument('-s', type=int, default=0,
+                        help='(degrees) sets wave spreading (converted to cos2 spreading factor)')
     parser.add_argument('-E', default=None,
                         help='specify json with S and f (spectrum and freq); defaults otherwise')
-    parser.add_argument('-s', type=int, default=0,
+    parser.add_argument('-r', type=int, default=0,
                         help='sets the random seed')
     parser.add_argument('-S', type=str, default='M',
                         choices=['M', 'P', 'B', 'C'],
@@ -38,6 +63,11 @@ def main():
                                  + ", 'P'iersonMoskowitz" \
                                  + ", 'B'retschneider" \
                                  + ", 'C'ustom")
+    parser.add_argument('-o', type=str, default=None,
+                        help='output netcdf filename with incident wave data. Skips plotting.')
+    parser.add_argument('-n', type=int, default=10,
+                        help='for output, number of wave periods to save')
+
     args = parser.parse_args()
 
     SpectrumType = _wave_spectrum_type[args.S]
@@ -45,7 +75,7 @@ def main():
     T = args.t
     phase = args.p * np.pi / 180.0
     beta = args.b * np.pi / 180.0
-    seed = args.s
+    seed = args.r
 
 
     Inc = LinearIncidentWave()
@@ -53,13 +83,23 @@ def main():
     if seed > 0:
         Inc.SetSeed(seed)
 
+    sf = spreading_factor_from_spotter_spread_deg(args.s)
+    default_sectors = 20
     if SpectrumType == WaveSpectrumType.MonoChromatic:
         Inc.SetToMonoChromatic(A, T, phase, beta)
     elif SpectrumType == WaveSpectrumType.PiersonMoskowitz:
-        Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
-        T = Inc.m_Tp
+        print("setting pierson moskowitz")
+        if args.s > 0:
+            Inc.SetToPiersonMoskowitzSpectrumWithCos2Spreading(2.*A, beta, sf, default_sectors)
+        else:
+            Inc.SetToPiersonMoskowitzSpectrum(2.*A, beta)
+        T = 2.0 * np.pi * np.sqrt(2. * A / 9.81) / 0.4019
     elif SpectrumType == WaveSpectrumType.Bretschneider:
-        Inc.SetToBretschneiderSpectrum(2.*A, T, beta)
+        print("setting bretschneider")
+        if args.s > 0:
+            Inc.SetToBretschneiderSpectrumWithCos2Spreading(2.*A, T, beta, sf, default_sectors)
+        else:
+            Inc.SetToBretschneiderSpectrum(2.*A, T, beta)
     elif SpectrumType == WaveSpectrumType.Custom:
         # grav = 9.81
         # w0 = sqrt(0.21 * grav / (2. * A))
@@ -131,6 +171,38 @@ def main():
     k = ((2. * np.pi / T)**2.) / 9.81
     # print(Inc)
 
+    if args.o is not None:
+        import xarray as xr
+        pts_t = []
+        pts_eta = []
+        pts_deta_dx = []
+        pts_deta_dy = []
+        pts_u_east = []
+        pts_v_north = []
+        for t in np.arange(0., args.n*T, 0.1):
+            pts_t.append(t)
+            eta, deta_dx, deta_dy, u_east, v_north = \
+                Inc.eta(0., 0., t, compute_deta=True, compute_uv=True)
+            pts_eta.append(eta)
+            pts_deta_dx.append(deta_dx)
+            pts_deta_dy.append(deta_dy)
+            pts_u_east.append(u_east)
+            pts_v_north.append(v_north)
+        ds = xr.Dataset(
+                data_vars={
+                    'eta': (['time'], pts_eta),
+                    'deta_dx': (['time'], pts_deta_dx),
+                    'deta_dy': (['time'], pts_deta_dy),
+                    'u_east': (['time'], pts_u_east),
+                    'v_north': (['time'], pts_v_north),
+                },
+                coords={
+                    'time': pts_t,
+                },
+            )
+        ds.to_netcdf(args.o)
+        import sys; sys.exit(0)
+
     # plot
     pts_t = []
     pts_eta = []
@@ -143,7 +215,6 @@ def main():
         eta = Inc.eta(x, y, t)
         pts_eta.append(eta)
         pts_eta_true.append(A * np.cos(k * xx - 2. * np.pi * t / T + phase))
-
 
     fig, ax = plt.subplots(1)
 
@@ -164,14 +235,19 @@ def main():
         pts_eta_true = []
         pts_deta_dx = []
         pts_deta_dy = []
+        pts_u_east = []
+        pts_v_north = []
         for x in np.arange(-1.5 * 2. * np.pi / k,
                            1.5 * 2. * np.pi / k,
                            2.0):
-            eta, deta_dx, deta_dy = Inc.eta(x, y, t, compute_deta=True)
+            eta, deta_dx, deta_dy, u_east, v_north = \
+                Inc.eta(x, y, t, compute_deta=True, compute_uv=True)
             pts_x.append(x)
             pts_eta.append(eta)
             pts_deta_dx.append(deta_dx)
             pts_deta_dy.append(deta_dy)
+            pts_u_east.append(u_east)
+            pts_v_north.append(v_north)
 
             xx = x * np.cos(beta) + y * np.sin(beta)
             pts_eta_true.append(A * np.cos(k * xx - 2. * np.pi * t / T + phase))
@@ -197,6 +273,48 @@ def main():
         ax.legend(lns, labs, loc=1)
 
         fig.suptitle(f'Incident Wave Elevation at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        ln1 = ax.plot(pts_u_east, pts_v_north, 'b', label='u/v cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('v_north', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        lns = ln1
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave u/v cycles at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        ln1 = ax.plot(pts_u_east, pts_deta_dx, 'b', label='u/deta cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('deta', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        lns = ln1
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave u vs deta cycles at {t = :.2f} (s)')
+        fig.tight_layout()
+
+        fig, ax = plt.subplots(1)
+
+        ln1 = ax.plot(pts_v_north, pts_deta_dy, 'b', label='v/deta cycles (m/s)')
+        ax2.set_xlabel('u_east', color=color)
+        ax2.set_ylabel('deta', color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        lns = ln1
+        labs = [l.get_label() for l in lns]
+        ax.legend(lns, labs, loc=1)
+
+        fig.suptitle(f'Incident Wave v vs deta cycles at {t = :.2f} (s)')
         fig.tight_layout()
 
     plt.show()
