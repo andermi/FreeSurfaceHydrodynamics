@@ -12,6 +12,7 @@ packages =
     fshd
     fshd.examples
     fshd.examples.example_hydrodynamic_coeffs
+    fshd.examples.example_incwave_spectra
 install_requires =
     matplotlib
     numpy
@@ -39,4 +40,6 @@ fshd.examples.example_hydrodynamic_coeffs =
     BuoyA5_IR.1
     BuoyA5_JR.3
     BuoyA5_pan.dat
+fshd.examples.example_incwave_spectra =
+    incwavespectra.json
 * = README.md

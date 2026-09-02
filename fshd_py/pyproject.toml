@@ -1,3 +1,18 @@
+[project]
+name = "fshd-py"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.2",
+    "ode>=0.4.0",
+    "pandas>=3.0.5",
+    "scipy>=1.18.1",
+    "xarray>=2026.7.0",
+]
+
 [build-system]
 requires = ["setuptools", "build"]
 build-backend = "setuptools.build_meta"
